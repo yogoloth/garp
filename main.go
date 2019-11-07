@@ -19,16 +19,7 @@ var opts struct {
 	Ip string `long:"Addr" description:"ip" required:"true"`
 }
 
-//   ./garp --Addr 172.17.5.182 --If wlp4s0
-func main() {
-	_, err := flags.ParseArgs(&opts, os.Args)
-	if err != nil {
-		fmt.Println("args error")
-		os.Exit(1)
-	}
-	fmt.Println(opts.If)
-	fmt.Println(opts.Ip)
-
+func SendGratuitousArp(iface string, req_ip string) {
 	etherArp := new(C.arp_packet)
 	size := uint(unsafe.Sizeof(*etherArp))
 	fmt.Println("Size : ", size)
@@ -42,16 +33,16 @@ func main() {
 	defer syscall.Close(fd)
 
 	// Get Mac address
-	interf, err := net.InterfaceByName(opts.If)
+	interf, err := net.InterfaceByName(iface)
 	if err != nil {
-		fmt.Printf("Could not find %s interface\n", opts.If)
+		fmt.Printf("Could not find %s interface\n", iface)
 		return
 	}
 
 	fmt.Println("Interface hw address: ", interf.HardwareAddr)
 
 	iface_cstr := C.CString(interf.HardwareAddr.String())
-	ip_cstr := C.CString(opts.Ip)
+	ip_cstr := C.CString(req_ip)
 
 	ppacket := C.fill_arp_packet(iface_cstr, ip_cstr)
 	packet := C.GoBytes(unsafe.Pointer(ppacket), C.int(size))
@@ -70,5 +61,18 @@ func main() {
 	} else {
 		fmt.Println("Sent packet")
 	}
+}
+
+//   ./garp --Addr 172.17.5.182 --If wlp4s0
+func main() {
+	_, err := flags.ParseArgs(&opts, os.Args)
+	if err != nil {
+		fmt.Println("args error")
+		os.Exit(1)
+	}
+	fmt.Println(opts.If)
+	fmt.Println(opts.Ip)
+
+	SendGratuitousArp(opts.If, opts.Ip)
 
 }

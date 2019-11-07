@@ -29,4 +29,4 @@ typedef struct __attribute__((packed))
     arphdr arp;
 } arp_packet;
 
-char* fill_arp_packet(char* senderMac, char* senderIp);
+char* fill_arp_packet(char* smac, char* sip);
