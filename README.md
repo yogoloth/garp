@@ -2,4 +2,4 @@
 send gratuitous arp
 
 # example
-./garp --Addr 172.17.5.182 --If wlp4s0
+./garp --addr 172.17.5.182 --if wlp4s0

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/jessevdk/go-flags"
 	"net"
 	"os"
@@ -15,31 +14,31 @@ import (
 import "C"
 
 var opts struct {
-	If string `long:"If",short:"i" description:"interface" required:"true"`
-	Ip string `long:"Addr" description:"ip" required:"true"`
+	If string `long:"if",short:"i" description:"interface" required:"true"`
+	Ip string `long:"addr" description:"ip" required:"true"`
 }
 
 func SendGratuitousArp(iface string, req_ip string) {
 	etherArp := new(C.arp_packet)
 	size := uint(unsafe.Sizeof(*etherArp))
-	fmt.Println("Size : ", size)
+	LogDebug.Println("ArpPacketSize : ", size)
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
 	if err != nil {
-		fmt.Println("open ap_packet socket error: " + err.Error())
+		LogError.Println("open ap_packet socket error: " + err.Error())
 		return
 	}
-	fmt.Println("Obtained fd ", fd)
+	LogDebug.Println("obtained fd ", fd)
 	defer syscall.Close(fd)
 
 	// Get Mac address
 	interf, err := net.InterfaceByName(iface)
 	if err != nil {
-		fmt.Printf("Could not find %s interface\n", iface)
+		LogError.Printf("could not find %s interface\n", iface)
 		return
 	}
 
-	fmt.Println("Interface hw address: ", interf.HardwareAddr)
+	LogDebug.Println("interface hw address: ", interf.HardwareAddr)
 
 	iface_cstr := C.CString(interf.HardwareAddr.String())
 	ip_cstr := C.CString(req_ip)
@@ -57,21 +56,20 @@ func SendGratuitousArp(iface string, req_ip string) {
 	err = syscall.Sendto(fd, packet, 0, &addr)
 
 	if err != nil {
-		fmt.Println("Error: ", err)
+		LogError.Println("sent packet error: ", err)
 	} else {
-		fmt.Println("Sent packet")
+		LogInfo.Println("sent packet success")
 	}
 }
 
-//   ./garp --Addr 172.17.5.182 --If wlp4s0
+//   ./garp --addr 172.17.5.182 --if wlp4s0
 func main() {
 	_, err := flags.ParseArgs(&opts, os.Args)
 	if err != nil {
-		fmt.Println("args error")
+		LogError.Println("args error")
 		os.Exit(1)
 	}
-	fmt.Println(opts.If)
-	fmt.Println(opts.Ip)
+	LogDebug.Println("Got interface:", opts.If, " ip:", opts.Ip)
 
 	SendGratuitousArp(opts.If, opts.Ip)
 
