@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/jessevdk/go-flags"
+	"github.com/vishvananda/netlink"
 	"net"
 	"os"
 	"syscall"
@@ -14,8 +15,10 @@ import (
 import "C"
 
 var opts struct {
-	If string `long:"if",short:"i" description:"interface" required:"true"`
-	Ip string `long:"addr" description:"ip" required:"true"`
+	If        string `long:"if",short:"i" description:"interface" required:"true"`
+	Ip        string `long:"addr" description:"ip" required:"true"`
+	Mask      string `long:"mask" description:"mask"`
+	FlagSetip bool   `short:"s" description:"set ip"`
 }
 
 func SendGratuitousArp(iface string, req_ip string) {
@@ -56,10 +59,26 @@ func SendGratuitousArp(iface string, req_ip string) {
 	err = syscall.Sendto(fd, packet, 0, &addr)
 
 	if err != nil {
-		LogError.Println("sent packet error: ", err)
+		LogError.Println("sent packet error: ", err.Error())
+		os.Exit(1)
 	} else {
 		LogInfo.Println("sent packet success")
 	}
+}
+
+func AddIp(iface string, req_ip string, mask string) {
+	dst_if, err := netlink.LinkByName(iface)
+	if err != nil {
+		LogError.Printf("get %s error: %s\n", iface, err.Error())
+		os.Exit(1)
+	}
+
+	addr, err := netlink.ParseAddr(req_ip + "/" + mask)
+	if err != nil {
+		LogError.Printf("parse ip %s/%s error: %s\n", req_ip, mask, err.Error())
+		os.Exit(1)
+	}
+	netlink.AddrAdd(dst_if, addr)
 }
 
 //   ./garp --addr 172.17.5.182 --if wlp4s0
@@ -69,8 +88,14 @@ func main() {
 		LogError.Println("args error")
 		os.Exit(1)
 	}
-	LogDebug.Println("Got interface:", opts.If, " ip:", opts.Ip)
+	if len(opts.Mask) == 0 {
+		opts.Mask = "24"
+	}
+	LogDebug.Println("Got interface:", opts.If, "ip:", opts.Ip, "mask:", opts.Mask)
 
+	if opts.FlagSetip {
+		AddIp(opts.If, opts.Ip, opts.Mask)
+	}
 	SendGratuitousArp(opts.If, opts.Ip)
 
 }
